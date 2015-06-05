@@ -121,7 +121,8 @@
     function Search(element, options) {
         this.el = element;
         this.options = $.extend({}, defaults, options);
-        this.currentResult = [];
+        this.currentValues = [];
+        this.savedItems = [];
 
         //this._defaults = defaults;
         //this._name = pluginName;
@@ -129,11 +130,16 @@
         this.init();
     }
     Search.prototype.init = function () {
+        // массив с которым будем работать
+        this.currentItems = this.options.items;
         this.$el = $(this.el);
 
         this.$dropdown = $('<div />')
             .addClass('form-control')
-            .css({marginTop: 5})
+            .css({
+                marginTop: 5,
+                height: 'auto'
+            })
             .insertAfter(this.$el)
             .hide();
 
@@ -145,16 +151,46 @@
                 lineHeight: 'inherit',
                 width: 4
             })
-            .appendTo(this.$el);
+            .appendTo(this.$el)
+            .on('keyup', $.proxy(this.keyup, this));
         autoGrow(this.$input);
 
         this.$el.on('click', $.proxy(this.focus, this));
+    };
+    Search.prototype.keyup = function (e) {
+        var searchText = this.$input.val(),
+            escapedSearchText = searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"),
+            regex = new RegExp(escapedSearchText, 'i');
+
+        if (!escapedSearchText.length && this.savedItems.length) {
+            var obj = {}, item,
+                val = this.currentValues.pop();
+
+            this.options.items = this.savedItems.pop();
+            this.currentItems = this.options.items;
+
+            obj[this.options.valueField] = val;
+            item = _.findWhere(this.options.items, obj);
+
+            this.$input.prev('span').remove();
+            this.$input.val(item.label);
+        } else {
+            // обновлям текщий массив
+            this.currentItems = [];
+            this.options.items.forEach(function (item) {
+                var label = item[this.options.labelField];
+                if (regex.test(label)) {
+                    this.currentItems.push(item);
+                }
+            }, this);
+        }
+        this.focus();
     };
     Search.prototype.focus = function () {
         this.$input.focus();
         this.$dropdown.empty();
 
-        this.options.items.forEach(function (item) {
+        this.currentItems.forEach(function (item) {
             var label = item[this.options.labelField];
 
             $('<span />')
@@ -168,7 +204,10 @@
     };
     Search.prototype.labelClick = function (value) {
         var obj = {}, item;
-        this.currentResult.push(value);
+        this.currentValues.push(value);
+        this.savedItems.push(this.options.items);
+
+        this.$input.val('');
         this.$dropdown.empty().hide();
 
         obj[this.options.valueField] = value;
@@ -180,6 +219,8 @@
             .insertBefore(this.$input);
 
         this.options.callback.change.call(this, value);
+        this.focus();
+        console.log(this);
     };
 
     $.fn[pluginName] = function (options) {
@@ -195,7 +236,39 @@
 (function ($) {
     "use strict";
 
-    var level2 = [
+    function load(data) {
+        var parent = _.where(data, {parent_id: "0"});
+
+        /*
+        var  str = 'Renault', s = 'ren';
+        if ((new RegExp(s, 'i')).test(str)) {
+            console.log(str);
+        }*/
+
+        $(function () {
+            $('#search').search({
+                items: parent,
+                callback: {
+                    change: function (value) {
+                        var items = _.where(data, {parent_id: value});
+                        if (items.length) {
+                            // вот тут можно сделать аякс запрос к REST API
+                            // и если пришел какой то результат то подсунуть его плагину
+                            this.options.items = items;
+                            this.currentItems = this.options.items;
+                        } else {
+                            this.options.items = [];
+                            this.currentItems = [];
+                        }
+                    }
+                }
+            });
+        });
+    }
+    $.getJSON('data.json', $.proxy(load, this));
+
+
+    /*var level2 = [
         {value: 1, label: 'Label 1 Sub 1', parent_id: 1},
         {value: 2, label: 'Label 1 Sub 2', parent_id: 1},
         {value: 3, label: 'Label 1 Sub 3', parent_id: 1},
@@ -214,9 +287,9 @@
                 change: function (value) {
                     // вот тут можно сделать аякс запрос к REST API
                     // и если пришел какой то результат то подсунуть его плагину
-                    this.options.items = _.where(level2, {parent_id: value});
+                    this.options.items = _.where();
                 }
             }
         });
-    });
+    });*/
 }(jQuery));
