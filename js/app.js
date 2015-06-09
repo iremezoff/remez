@@ -173,7 +173,7 @@
             item = _.findWhere(this.options.items, obj);
 
             this.$input.prev('span').remove();
-            this.$input.val(item.label);
+            //this.$input.val(item.label);
         } else {
             // обновлям текщий массив
             this.currentItems = [];
@@ -214,7 +214,7 @@
         item = _.findWhere(this.options.items, obj);
 
         $('<span />')
-            .addClass('btn btn-default btn-xs btn-label')
+            .addClass('btn btn-default btn-xs btn-label btn-selected')
             .text(item[this.options.labelField])
             .insertBefore(this.$input);
 
