@@ -67,7 +67,6 @@
                 );
 
                 if (keyCode === KEY_DELETE || keyCode === KEY_BACKSPACE) {
-                    console.log($input);
                     selection = exports.getSelection($input[0]);
                     if (selection.length) {
                         value = value.substring(0, selection.start) + value.substring(selection.start + selection.length);
@@ -132,14 +131,10 @@
     Search.prototype.init = function () {
         // массив с которым будем работать
         this.currentItems = this.options.items;
-        this.$el = $(this.el);
+        this.$el = $(this.el).wrap('<div class="search-wrap" />');
 
         this.$dropdown = $('<div />')
-            .addClass('form-control')
-            .css({
-                marginTop: 5,
-                height: 'auto'
-            })
+            .addClass('form-control dropdown')
             .insertAfter(this.$el)
             .hide();
 
@@ -152,25 +147,34 @@
                 width: 4
             })
             .appendTo(this.$el)
-            .on('keyup', $.proxy(this.keyup, this));
+            .on({
+                keyup: $.proxy(this.keyup, this)
+            });
         autoGrow(this.$input);
 
         this.$el.on('click', $.proxy(this.focus, this));
+        // скрываем дропдаун, если кликнули вне его области
+        $(exports).on('mouseup', $.proxy(this.hideDropdown, this));
+    };
+    Search.prototype.hideDropdown = function (e) {
+        if($(e.target).closest('.search-wrap').length === 0) {
+            this.$dropdown.hide();
+        }
     };
     Search.prototype.keyup = function (e) {
         var searchText = this.$input.val(),
             escapedSearchText = searchText.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&"),
             regex = new RegExp(escapedSearchText, 'i');
 
-        if (!escapedSearchText.length && this.savedItems.length) {
-            var obj = {}, item,
-                val = this.currentValues.pop();
+        if (!escapedSearchText.length && this.savedItems.length && e.keyCode === KEY_BACKSPACE) {
+            //var obj = {}, item,
+            //    val = this.currentValues.pop();
 
             this.options.items = this.savedItems.pop();
             this.currentItems = this.options.items;
 
-            obj[this.options.valueField] = val;
-            item = _.findWhere(this.options.items, obj);
+            //obj[this.options.valueField] = val;
+            //item = _.findWhere(this.options.items, obj);
 
             this.$input.prev('span').remove();
             //this.$input.val(item.label);
@@ -200,7 +204,9 @@
                 .appendTo(this.$dropdown);
         }, this);
 
-        this.$dropdown.show();
+        if (this.currentItems.length) {
+            this.$dropdown.show();
+        }
     };
     Search.prototype.labelClick = function (value) {
         var obj = {}, item;
@@ -214,13 +220,12 @@
         item = _.findWhere(this.options.items, obj);
 
         $('<span />')
-            .addClass('btn btn-default btn-xs btn-label btn-selected')
+            .addClass('btn btn-default btn-xs btn-selected')
             .text(item[this.options.labelField])
             .insertBefore(this.$input);
 
         this.options.callback.change.call(this, value);
         this.focus();
-        console.log(this);
     };
 
     $.fn[pluginName] = function (options) {
